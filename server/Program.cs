@@ -12,7 +12,6 @@ using System.Text.Json;
 using BackEnd;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls("http://localhost:5125");
 builder.Services.AddControllers();
 builder.Services.AddCors();
 
@@ -27,11 +26,11 @@ app.UseCors(options =>
 		   .AllowAnyMethod()
 		   .AllowAnyHeader();
 });
-
+const string connectionString = "Server=localhost;Database=MPP-project;User Id=SA;Password=Password123;TrustServerCertificate=true";
 // Instantiate _productService
-var _productService = new ProductService("Server=localhost;Database=MPP-project;User Id=SA;Password=Password123;TrustServerCertificate=true");
-var _reviewService = new ReviewService("Server=localhost;Database=MPP-project;User Id=SA;Password=Password123;TrustServerCertificate=true");
-var _userService = new UserService("Server=localhost;Database=MPP-project;User Id=SA;Password=Password123;TrustServerCertificate=true");
+var _productService = new ProductService(connectionString);
+var _reviewService = new ReviewService(connectionString);	
+var _userService = new UserService(connectionString);
 // Endpoint to get paginated data for a specific type
 app.MapGet("/api/{type}", (string type, HttpRequest request) =>
 {
@@ -77,14 +76,33 @@ app.MapPost("/api/review/add", async (HttpRequest request) =>
 	{
 		var body = await reader.ReadToEndAsync();
 		Console.WriteLine(body);
-		var review = JsonSerializer.Deserialize<Review>(body) ?? new Review();
-		try{
-			await ReviewService.AddReviewAsync(review);
-			return Results.Ok("Review added successfully");
-		}
-		catch(Exception ex){
-			Console.Error.WriteLine($"Error adding review: {ex.Message}");
-			return Results.Problem("Error adding review");
+		using (JsonDocument document = JsonDocument.Parse(body))
+		{
+			// Create a mutable JSON object from the parsed document
+			var jsonObject = document.RootElement.Clone();
+			// Extract and decode the Author field
+			string encodedAuthor = jsonObject.GetProperty("Author").GetString();
+			Console.WriteLine(encodedAuthor + "Encoded author");
+			string decodedAuthor = _userService.DecryptToken(encodedAuthor).Split(":")[0];
+
+			// Replace the encoded Author field with the decoded value in the JSON string
+			var jsonObjectWithDecodedAuthor = JsonDocument.Parse(body).RootElement
+				.GetRawText().Replace($"\"{encodedAuthor}\"", $"\"{decodedAuthor}\"");
+			Console.WriteLine(jsonObjectWithDecodedAuthor + "Decoded author");
+			// Deserialize the updated JSON string into the Review object
+			var review = JsonSerializer.Deserialize<Review>(jsonObjectWithDecodedAuthor) ?? new Review();
+			Console.WriteLine(review);
+			try
+			{
+			Console.WriteLine(review + "Adding review");
+				await ReviewService.AddReviewAsync(review);
+				return Results.Ok("Review added successfully");
+			}
+			catch (Exception ex)
+			{
+				Console.Error.WriteLine($"Error adding review: {ex.Message}");
+				return Results.Problem("Error adding review");
+			}
 		}
 	}
 });

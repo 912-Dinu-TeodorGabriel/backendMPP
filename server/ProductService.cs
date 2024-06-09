@@ -13,12 +13,12 @@ namespace BackEnd
 	public class ProductService
 	{
 		private readonly string _connectionString;
-		private ReviewService reviewService;
+		private ReviewService _reviewService;
 
 		public ProductService(string connectionString)
 		{
 			_connectionString = connectionString;
-			reviewService = new ReviewService(connectionString);
+			_reviewService = new ReviewService(connectionString);
 			
 		}
 
@@ -85,7 +85,7 @@ namespace BackEnd
 									type = reader["type"].ToString(),
 									productName = reader["productName"].ToString(),
 									image = reader["image"].ToString(),
-									rating = reader["rating"].ToString(),
+									rating = _reviewService.GetAverageRating(Convert.ToInt32(reader["id"])).ToString(),
 									price = reader["price"].ToString(),
 									cpu = reader["cpu"].ToString(),
 									ram = reader["ram"].ToString(),
@@ -130,7 +130,7 @@ namespace BackEnd
 									type = reader["type"].ToString(),
 									productName = reader["productName"].ToString(),
 									image = reader["image"].ToString(),
-									rating = reader["rating"].ToString(),
+									rating = _reviewService.GetAverageRating(id).ToString(),
 									price = reader["price"].ToString(),
 									cpu = reader["cpu"].ToString(),
 									ram = reader["ram"].ToString(),
@@ -170,14 +170,14 @@ namespace BackEnd
 				if (newProduct.id == -1)
 				{
 					// Insert new product
-					query = @"INSERT INTO Products (type, productName, image, rating, price, cpu, ram, storage, screen, resolution, displayTechnology, description)
-							  VALUES (@type, @productName, @image, @rating, @price, @cpu, @ram, @storage, @screen, @resolution, @displayTechnology, @description)";
+					query = @"INSERT INTO Products (type, productName, image, price, cpu, ram, storage, screen, resolution, displayTechnology, description)
+							  VALUES (@type, @productName, @image, @price, @cpu, @ram, @storage, @screen, @resolution, @displayTechnology, @description)";
 				}
 				else
 				{
 					// Update existing product
 					query = @"UPDATE Products 
-							  SET type = @type, productName = @productName, image = @image, rating = @rating, price = @price, cpu = @cpu, ram = @ram, 
+							  SET type = @type, productName = @productName, image = @image, price = @price, cpu = @cpu, ram = @ram, 
 								  storage = @storage, screen = @screen, resolution = @resolution, displayTechnology = @displayTechnology, description = @description
 							  WHERE id = @id";
 				}
@@ -187,7 +187,6 @@ namespace BackEnd
 					command.Parameters.AddWithValue("@type", newProduct.type ?? "Laptop");
 					command.Parameters.AddWithValue("@productName", newProduct.productName ?? "Unknown");
 					command.Parameters.AddWithValue("@image", newProduct.image ?? "Unknown");
-					command.Parameters.AddWithValue("@rating", newProduct.rating ?? "0");
 					command.Parameters.AddWithValue("@price", newProduct.price ?? "0");
 					command.Parameters.AddWithValue("@cpu", newProduct.cpu ?? "Unknown");
 					command.Parameters.AddWithValue("@ram", newProduct.ram ?? "Unknown");
@@ -275,7 +274,7 @@ namespace BackEnd
 									type = reader["type"].ToString(),
 									productName = reader["productName"].ToString(),
 									image = reader["image"].ToString(),
-									rating = reader["rating"].ToString(),
+									rating = _reviewService.GetAverageRating(Convert.ToInt32(reader["id"])).ToString(),
 									price = reader["price"].ToString(),
 									cpu = reader["cpu"].ToString(),
 									ram = reader["ram"].ToString(),
